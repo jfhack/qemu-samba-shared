@@ -1,0 +1,21 @@
+name: {{config_name}}
+services:
+  samba-service:
+    container_name: samba-{{config_name}}
+    hostname: samba
+    image: ghcr.io/jfhack/samba:latest
+    restart: always
+    environment:
+      - USERID=1000
+      - GROUPID=1000
+    command: -s "shared;/shared;yes;no;yes;all;none;;comment1" -p
+    volumes:
+      - "{{config_shared_dir}}:/shared"
+    networks:
+      {{docker_iface}}:
+        ipv4_address: {{config_ip}}
+
+networks:
+  {{docker_iface}}:
+    name: {{docker_iface}}
+    external: true
