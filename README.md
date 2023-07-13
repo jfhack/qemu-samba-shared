@@ -1,4 +1,4 @@
-# QEMU Samba Share
+# QEMU Samba Shared
 This is a simple Python script that allows you to configure a shared directory for QEMU using Samba through Docker.
 
 It requires [qemu-hook](https://github.com/jfhack/qemu-hook) to be installed, as well as the Docker Compose plugin.
