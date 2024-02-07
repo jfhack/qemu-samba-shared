@@ -43,7 +43,8 @@ class SambaShareConfigurator:
     if out.returncode == 0:
       match = re.search(r"inet (\d+\.\d+\.\d+\.\d+/\d+)", out.stdout)
       if match:
-        return match.group(1)
+        network = ipaddress.ip_network(match.group(1), strict=False)
+        return f"{network.network_address}/{network.prefixlen}"
 
   def network_scripts(self):
     paths = []
