@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import subprocess
 import re
+import shlex
 from pathlib import Path
 import ipaddress
 import json
@@ -36,7 +37,14 @@ class SambaShareConfigurator:
 
   def get_iface(self):
     suggested_iface = "virbr0"
-    return input(f"Virtual Bridge interface [{suggested_iface}]: ") or suggested_iface
+    while True:
+      iface = input(f"Virtual Bridge interface [{suggested_iface}]: ") or suggested_iface
+      if self.valid_iface_name(iface):
+        return iface
+      print("Invalid interface name (up to 15 letters, digits, '.', '_' or '-')")
+
+  def valid_iface_name(self, name):
+    return bool(re.fullmatch(r"[a-zA-Z0-9_.-]{1,15}", name)) and name not in (".", "..")
 
   def get_cidr(self):
     out = subprocess.run(["ip", "-4", "a", "show", "dev", self.iface], capture_output=True, text=True)
@@ -49,23 +57,15 @@ class SambaShareConfigurator:
   def network_scripts(self):
     paths = []
     Path.mkdir(self.script_dir, parents=True, exist_ok=True)
+    network_name = f"docker-{self.iface}"
     for action in ["create", "remove"]:
-      script = Path(self.script_dir, f"{action}-docker-{self.iface}.sh")
+      script = Path(self.script_dir, f"{action}-{network_name}.sh")
+      if action == "create":
+        cmd = ["docker", "network", "create", "--driver=macvlan", f"--subnet={self.cidr}", "-o", f"parent={self.iface}", network_name]
+      else:
+        cmd = ["docker", "network", "rm", network_name]
       with open(script, "w") as f:
-        if action == "create":
-          f.write(
-            (
-              "#!/bin/bash\n"
-              f"docker network create --driver=macvlan --subnet={self.cidr} -o parent={self.iface} docker-{self.iface}\n"
-            )
-          )
-        else:
-          f.write(
-            (
-              "#!/bin/bash\n"
-              f"docker network rm docker-{self.iface}\n"
-            )
-          )
+        f.write("#!/bin/bash\n" + shlex.join(cmd) + "\n")
       script.chmod(0o775)
       paths.append(script)
     self.create_script_path, self.remove_script_path = paths
